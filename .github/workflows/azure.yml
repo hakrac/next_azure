@@ -37,19 +37,35 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ env.NODE_VERSION }}
+    - name: Cache node modules
+      id: cache-node
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json')}}
+        restore-keys: ${{ runner.os }}-node-
+        
+    # install node dependencies if they are not cached
     - name: npm install and build
+      if: steps.cache-node.outputs.cache-hit != 'true'
       run: |
         npm install
         npm run build
+    
+    # log into azure to deploy web app
     - name: 'Log in with Azure'
       uses: azure/login@v1
       with:
         creds: '${{ secrets.AZURE_CREDENTIALS }}'
+        
+    # deploy web app
     - name: 'Deploy to Azure WebApp'
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+        
+    # sign out of azure
     - name: Sign out of Azure
       run: az logout
       
